@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HalfPlus+ | เครื่องคิดเลขคนละครึ่งพลัส</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 420px; text-align: center; }
+        h2 { color: #1e3a8a; margin-bottom: 5px; }
+        .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 25px; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; color: #374151; font-size: 15px; }
+        input { width: 100%; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 18px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #3b82f6; }
+        .quota-info { font-size: 12px; color: #9ca3af; font-weight: normal; margin-top: 4px; }
+        .result-box { background: #f8fafc; padding: 15px; border-radius: 12px; margin-top: 20px; border: 1px solid #e2e8f0; }
+        .result-row { display: flex; justify-content: space-between; margin: 10px 0; font-size: 16px; }
+        .highlight-user { font-size: 20px; font-weight: bold; color: #ef4444; }
+        .highlight-gov { font-size: 18px; font-weight: bold; color: #10b981; }
+        hr { border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+        
+        .btn-save { width: 100%; background-color: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; transition: 0.2s; }
+        .btn-save:hover { background-color: #2563eb; }
+        .btn-reset { background: none; border: none; color: #9ca3af; font-size: 12px; cursor: pointer; text-decoration: underline; margin-top: 10px; }
+        .btn-reset:hover { color: #ef4444; }
+        .history-section { text-align: left; margin-top: 25px; }
+        .history-title { font-size: 14px; font-weight: bold; color: #4b5563; margin-bottom: 10px; }
+        .history-list { max-height: 150px; overflow-y: auto; font-size: 13px; color: #6b7280; padding-left: 20px; }
+        .history-item { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>HalfPlus+ 🇹🇭</h2>
+    <div class="subtitle">คำนวณสัดส่วน รัฐ 60% | เรา 40%</div>
+    
+    <div class="input-group">
+        <label for="maxGovDaily">
+            สิทธิรัฐคงเหลือตอนนี้ (บาท)
+            <button class="btn-reset" onclick="resetQuota()" style="float: right; margin: 0; padding: 0;">[รีเซ็ตเป็น 200]</button>
+        </label>
+        <input type="number" id="maxGovDaily" value="200" oninput="calculate()">
+    </div>
+
+    <hr>
+
+    <div class="input-group">
+        <label for="price">ใส่ราคาสินค้าเพื่อลองคำนวณ (บาท)</label>
+        <input type="number" id="price" placeholder="0.00" oninput="calculate()">
+    </div>
+
+    <div class="result-box">
+        <div class="result-row">
+            <span>🔴 เราจ่ายเอง:</span>
+            <span class="highlight-user"><span id="userResult">0.00</span> บาท</span>
+        </div>
+        <div class="result-row">
+            <span>🟢 รัฐช่วยจ่าย:</span>
+            <span class="highlight-gov"><span id="govResult">0.00</span> บาท</span>
+        </div>
+    </div>
+
+    <button class="btn-save" onclick="saveTransaction()">📌 บันทึกรายการนี้ (ตัดยอดสิทธิ)</button>
+
+    <div class="history-section">
+        <div class="history-title">ประวัติการใช้จ่ายวันนี้:</div>
+        <ol class="history-list" id="historyList"></ol>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    if(localStorage.getItem("currentQuota")) {
+        document.getElementById('maxGovDaily').value = localStorage.getItem("currentQuota");
+    } else {
+        document.getElementById('maxGovDaily').value = 200;
+    }
+    updateHistoryDOM();
+    calculate();
+});
+
+let currentGovShare = 0; 
+
+function calculate() {
+    let price = parseFloat(document.getElementById('price').value) || 0;
+    let maxGovDaily = parseFloat(document.getElementById('maxGovDaily').value) || 0; 
+    
+    currentGovShare = price * 0.60;
+    let userPay = 0;
+
+    if (currentGovShare > maxGovDaily) {
+        currentGovShare = maxGovDaily;
+        userPay = price - maxGovDaily;
+    } else {
+        userPay = price * 0.40;
+    }
+    
+    document.getElementById('govResult').innerText = currentGovShare.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('userResult').innerText = userPay.toLocaleString('th-TH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function saveTransaction() {
+    let price = parseFloat(document.getElementById('price').value) || 0;
+    if (price <= 0) {
+        alert("กรุณาใส่ราคาสินค้าก่อนกดบันทึกครับ");
+        return;
+    }
+
+    let maxGovDaily = parseFloat(document.getElementById('maxGovDaily').value) || 0;
+    
+    let newQuota = maxGovDaily - currentGovShare;
+    if (newQuota < 0) newQuota = 0;
+    
+    document.getElementById('maxGovDaily').value = newQuota.toFixed(2);
+    localStorage.setItem("currentQuota", newQuota.toFixed(2)); 
+
+    let history = JSON.parse(localStorage.getItem("historyLog")) || [];
+    let time = new Date().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'});
+    history.push(`เวลา ${time} - ซื้อของ ${price} บ. (รัฐช่วย ${currentGovShare.toFixed(2)} บ.)`);
+    localStorage.setItem("historyLog", JSON.stringify(history));
+
+    document.getElementById('price').value = "";
+    calculate();
+    updateHistoryDOM();
+}
+
+function updateHistoryDOM() {
+    let history = JSON.parse(localStorage.getItem("historyLog")) || [];
+    let listHTML = "";
+    if (history.length === 0) {
+        listHTML = "<span style='color:#9ca3af; font-size:12px;'>ยังไม่มีรายการบันทึกของวันนี้</span>";
+    } else {
+        for(let i = history.length - 1; i >= 0; i--) { 
+            listHTML += `<li class="history-item">${history[i]}</li>`;
+        }
+    }
+    document.getElementById('historyList').innerHTML = listHTML;
+}
+
+function resetQuota() {
+    if(confirm("คุณต้องการล้างประวัติและรีเซ็ตสิทธิกลับเป็น 200 บาทใช่หรือไม่?")) {
+        document.getElementById('maxGovDaily').value = 200;
+        localStorage.setItem("currentQuota", 200);
+        localStorage.removeItem("historyLog");
+        calculate();
+        updateHistoryDOM();
+    }
+}
+</script>
+
+</body>
+</html>
